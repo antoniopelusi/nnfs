@@ -470,3 +470,134 @@ class Optimizer_Adam:
         STAGE: training loop (called once per epoch).
         """
         self.iterations += 1
+
+
+class DPWrapper:
+    """
+    Differential-privacy wrapper for any of the optimizers above.
+
+    STAGE: Optimizer (wraps another optimizer, intercepting the gradients
+    right before they reach it).
+
+    Purpose: educational approximation of DP-SGD (Abadi et al., 2016). It
+    clips the L2 norm of the gradient and adds calibrated Gaussian noise
+    before handing the (now noisy) gradient off to the wrapped optimizer.
+
+    IMPORTANT (simplified, non-rigorous version): true DP-SGD clips and
+    adds noise to the gradient of EVERY individual sample, then averages
+    the noisy per-sample gradients. This wrapper instead clips and adds
+    noise to the already-aggregated batch gradient produced by this
+    library's backward pass (see Layer_Dense.backward() in layers.py,
+    which sums contributions across the batch via a single matrix
+    product). As a result, it does NOT provide formal (epsilon, delta)
+    privacy guarantees -- an outlier sample can still dominate the
+    aggregated gradient's direction before clipping is applied. It is
+    meant to illustrate the "clip + noise" mechanics of DP-SGD, not to
+    protect real training data.
+    """
+
+    def __init__(self, optimizer, clip_norm=1.0, noise_multiplier=1.0):
+        """
+        Initialize the DP wrapper around an existing optimizer instance.
+
+        STAGE: training pipeline construction (called once, before
+        starting training, wrapping an already-constructed optimizer such
+        as Optimizer_Adam or Optimizer_SGD).
+
+        Parameters:
+            optimizer: the underlying optimizer instance (e.g.
+                Optimizer_Adam(...)) that will actually apply the
+                parameter update, after the gradient has been clipped and
+                perturbed with noise.
+            clip_norm (float): maximum allowed L2 norm for the (batch)
+                gradient of each parameter array (weights or biases). If
+                exceeded, the gradient is rescaled down to this norm.
+            noise_multiplier (float): scales the standard deviation of the
+                Gaussian noise added after clipping (noise std =
+                noise_multiplier * clip_norm). Higher values trade more
+                privacy protection for more degraded gradients.
+        """
+        self.optimizer = optimizer
+        self.clip_norm = clip_norm
+        self.noise_multiplier = noise_multiplier
+
+    @property
+    def current_learning_rate(self):
+        """
+        Expose the wrapped optimizer's current learning rate.
+
+        STAGE: reporting (read by Model.train()'s periodic summary print,
+        which accesses optimizer.current_learning_rate directly, the same
+        way it would for any of the plain optimizers above). Implemented
+        as a property, rather than copied at __init__ time, so it always
+        reflects the wrapped optimizer's latest value after learning rate
+        decay is applied in pre_update_params().
+        """
+        return self.optimizer.current_learning_rate
+
+    @property
+    def iterations(self):
+        """
+        Expose the wrapped optimizer's iteration counter.
+
+        STAGE: reporting/introspection (interface consistency with the
+        plain optimizers above, which all expose `iterations` directly).
+        """
+        return self.optimizer.iterations
+
+    def pre_update_params(self):
+        """
+        Delegate the learning rate decay step to the wrapped optimizer.
+
+        STAGE: training loop (called once per epoch, before iterating
+        over the trainable layers).
+        """
+        self.optimizer.pre_update_params()
+
+    def update_params(self, layer):
+        """
+        Clip and add noise to the layer's gradients, then delegate the
+        actual parameter update to the wrapped optimizer.
+
+        STAGE: training loop (called once for every trainable layer, at
+        every epoch, after the backward pass, in place of calling the
+        wrapped optimizer directly).
+
+        Parameters:
+            layer: a layer object (e.g. Layer_Dense) exposing dweights,
+                dbiases (gradients) and weights, biases (parameters to
+                update).
+        """
+        # Clip and perturb the gradient of each parameter array
+        # (weights and biases) independently.
+        for grad_name in ("dweights", "dbiases"):
+            grad = getattr(layer, grad_name)
+
+            # Clip the gradient's L2 norm: if it exceeds clip_norm,
+            # rescale it down to exactly clip_norm, bounding the maximum
+            # influence any single update can have on the parameters.
+            grad_norm = np.linalg.norm(grad)
+            if grad_norm > self.clip_norm:
+                grad = grad * (self.clip_norm / grad_norm)
+
+            # Add Gaussian noise calibrated to the clipping threshold, so
+            # the noise scale does not depend on the (already-bounded)
+            # gradient magnitude, only on clip_norm and noise_multiplier.
+            noise = np.random.normal(
+                0, self.noise_multiplier * self.clip_norm, size=grad.shape
+            )
+            setattr(layer, grad_name, grad + noise)
+
+        # Hand off the now clipped-and-noised gradient to the wrapped
+        # optimizer, which applies its usual update rule unchanged.
+        self.optimizer.update_params(layer)
+
+    def post_update_params(self):
+        """
+        Delegate the iteration counter increment to the wrapped
+        optimizer.
+
+        STAGE: training loop (called once per epoch, after updating all
+        layers).
+        """
+        self.optimizer.post_update_params()

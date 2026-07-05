@@ -1,4 +1,4 @@
-.SILENT: all clean setup run_blobs_classification run_iris_classification run_moons_classification run_regression_sine
+.SILENT: all clean setup run_blobs_classification run_blobs_classification_dp run_iris_classification run_iris_classification_dp run_moons_classification run_moons_classification_dp run_regression_sine run_regression_sine_dp
 
 VENV := .venv
 PYTHON := $(VENV)/bin/python
@@ -33,9 +33,19 @@ run_blobs_classification:
 	$(PYTHON) test_blobs_classification.py;
 	echo "=========| run completed |========="
 
+run_blobs_classification_dp:
+	echo "=========| run started... |========="
+	$(PYTHON) test_blobs_classification_dp.py;
+	echo "=========| run completed |========="
+
 run_iris_classification:
 	echo "=========| run started... |========="
 	$(PYTHON) test_iris_classification.py;
+	echo "=========| run completed |========="
+
+run_iris_classification_dp:
+	echo "=========| run started... |========="
+	$(PYTHON) test_iris_classification_dp.py;
 	echo "=========| run completed |========="
 
 run_moons_classification:
@@ -43,7 +53,17 @@ run_moons_classification:
 	$(PYTHON) test_moons_classification.py;
 	echo "=========| run completed |========="
 
+run_moons_classification_dp:
+	echo "=========| run started... |========="
+	$(PYTHON) test_moons_classification_dp.py;
+	echo "=========| run completed |========="
+
 run_regression_sine:
 	echo "=========| run started... |========="
 	$(PYTHON) test_regression_sine.py;
+	echo "=========| run completed |========="
+
+run_regression_sine_dp:
+	echo "=========| run started... |========="
+	$(PYTHON) test_regression_sine_dp.py;
 	echo "=========| run completed |========="

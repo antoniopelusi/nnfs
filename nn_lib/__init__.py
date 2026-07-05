@@ -16,9 +16,14 @@ training loop):
                     continuous value, etc).
 
 3. OPTIMIZERS    -> Optimizer_SGD, Optimizer_Adagrad, Optimizer_RMSprop,
-                    Optimizer_Adam
+                    Optimizer_Adam, DPWrapper
                     Decide HOW to update every layer's weights/biases using
                     the gradients computed during the backward pass.
+                    DPWrapper wraps any of the other optimizers with
+                    gradient clipping and noise injection, as an
+                    educational approximation of DP-SGD -- it does NOT
+                    provide a formal differential-privacy guarantee (see
+                    its docstring in optimizers.py for the caveats).
 
 4. LOSSES        -> Loss, Loss_CategoricalCrossentropy,
                     Activation_Softmax_Loss_CategoricalCrossentropy,
@@ -71,6 +76,7 @@ from .losses import (
 )
 from .model import Model
 from .optimizers import (
+    DPWrapper,
     Optimizer_Adagrad,
     Optimizer_Adam,
     Optimizer_RMSprop,
@@ -91,6 +97,7 @@ __all__ = [
     "Optimizer_Adagrad",
     "Optimizer_RMSprop",
     "Optimizer_Adam",
+    "DPWrapper",
     "Loss",
     "Loss_CategoricalCrossentropy",
     "Activation_Softmax_Loss_CategoricalCrossentropy",

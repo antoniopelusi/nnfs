@@ -30,6 +30,10 @@ runnable examples on different datasets and tasks.
 ├── test_moons_classification.py    # binary classification example
 ├── test_regression_sine.py         # regression example
 ├── test_blobs_classification.py    # classification + dropout/L2 example
+├── test_iris_classification_dp.py     # same, with DPWrapper (educational)
+├── test_moons_classification_dp.py    # same, with DPWrapper (educational)
+├── test_regression_sine_dp.py         # same, with DPWrapper (educational)
+├── test_blobs_classification_dp.py    # same, with DPWrapper (educational)
 └── README.md
 ```
 
@@ -243,6 +247,7 @@ have nothing for an optimizer to update.
 | `Optimizer_Adagrad` | `param += -lr * gradient / sqrt(cumulative_sum(gradient^2))` | Yes |
 | `Optimizer_RMSprop` | `param += -lr * gradient / sqrt(moving_avg(gradient^2))` | Yes |
 | `Optimizer_Adam` | RMSprop's adaptive scaling + a momentum-smoothed gradient, with bias correction | Yes |
+| `DPWrapper` | Wraps any optimizer above; clips gradient L2 norm, adds Gaussian noise, then delegates the update. **Educational approximation, not a compliant DP mechanism** -- see below. | Depends on wrapped optimizer |
 
 #### `Optimizer_SGD` — the baseline
 
@@ -316,6 +321,50 @@ epsilon=1e-7, beta_1=0.9, beta_2=0.999)`. Start here for any new
 pipeline; only switch to another optimizer if you have a specific reason
 to (e.g. teaching plain gradient descent, or comparing convergence
 behavior).
+
+#### `DPWrapper` — educational, NOT a compliant differential-privacy implementation
+
+**Technical:** wraps any of the four optimizers above. Before each
+`update_params(layer)` call reaches the wrapped optimizer, it clips the L2
+norm of `layer.dweights`/`layer.dbiases` to `clip_norm` and adds Gaussian
+noise (`std = noise_multiplier * clip_norm`) to the clipped gradient. The
+wrapped optimizer then applies its usual update rule to this
+clipped-and-noised gradient, unchanged.
+
+**Functional role:** approximates the "clip + noise" mechanics of DP-SGD
+(Abadi et al., 2016) so you can observe how gradient clipping and noise
+injection affect training. **It is a didactic approximation, not a
+differential-privacy guarantee**: real DP-SGD clips and noises the
+gradient of *every individual sample* before averaging them, which
+requires per-sample gradients. This library's `Layer_Dense.backward()`
+computes a single, already-aggregated gradient for the whole batch (via
+one matrix product), so `DPWrapper` clips/noises that aggregated
+gradient instead. An outlier sample can still dominate the batch
+gradient's direction *before* clipping is applied, and no (epsilon,
+delta) privacy budget is computed or tracked anywhere. Do not use this
+wrapper as an actual privacy control on sensitive data -- use a
+purpose-built, audited library (e.g. Opacus, TensorFlow Privacy) for
+that.
+
+**Constructor:** `DPWrapper(optimizer, clip_norm=1.0,
+noise_multiplier=1.0)`.
+- `optimizer`: an already-constructed optimizer instance to wrap (e.g.
+  `Optimizer_Adam(learning_rate=0.01)`).
+- `clip_norm`: maximum allowed L2 norm for each parameter array's
+  gradient; larger/deeper layers naturally produce larger gradients and
+  may need a higher `clip_norm` to avoid clipping away most of the
+  learning signal.
+- `noise_multiplier`: scales the noise standard deviation relative to
+  `clip_norm`. Higher values inject more noise (heavier, but still
+  informal, privacy-motivated degradation); `0` disables noise and turns
+  this into plain gradient clipping.
+
+**Where it goes in the pipeline:** passed to `model.set(optimizer=...)`
+in place of a bare optimizer, e.g.
+`optimizer=DPWrapper(Optimizer_Adam(learning_rate=0.01), clip_norm=1.0,
+noise_multiplier=0.3)`. Everything else in the pipeline (layers, loss,
+accuracy) is unaffected. See the `*_dp.py` variants of the test
+pipelines (Test pipelines section below).
 
 #### Learning rate decay (`decay` parameter, shared by all four)
 
@@ -800,6 +849,32 @@ python test_iris_classification.py
 Each script prints a periodic training summary (accuracy, total loss,
 data loss, regularization loss, current learning rate) and a final
 validation summary.
+
+### DP variants (`*_dp.py`) — educational only, not privacy-compliant
+
+Each of the four scripts above has a `_dp` counterpart
+(`test_iris_classification_dp.py`, `test_moons_classification_dp.py`,
+`test_regression_sine_dp.py`, `test_blobs_classification_dp.py`) that is
+architecturally identical, but wraps the optimizer in `DPWrapper` (see
+Stage 3) instead of using it directly, e.g.:
+
+```python
+optimizer=DPWrapper(
+    Optimizer_Adam(learning_rate=0.01, decay=1e-4),
+    clip_norm=1.0,
+    noise_multiplier=0.3,
+)
+```
+
+**These scripts are meant to demonstrate the mechanics of gradient
+clipping and noise injection, nothing more.** `DPWrapper` clips and adds
+noise to the batch-aggregated gradient, not to individual per-sample
+gradients as real DP-SGD requires, so it provides **no formal (epsilon,
+delta) differential-privacy guarantee** and must not be treated as a
+privacy control for real/sensitive data. See `DPWrapper`'s section above
+and its docstring in `optimizers.py` for the full explanation. If you
+need actual differential privacy, use an audited library built for it
+(e.g. Opacus, TensorFlow Privacy) instead.
 
 ## Dependencies
 
