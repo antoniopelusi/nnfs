@@ -11,17 +11,10 @@ Run from the project root with:
     python test_iris_classification.py
 """
 
-import os
-import sys
-
 import numpy as np
 from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-
-# Make the library importable when running this script directly from the
-# project root, without installing it as a package.
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
 from nn_lib import (
     Accuracy_Categorical,
