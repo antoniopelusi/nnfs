@@ -17,16 +17,15 @@ runnable examples on different datasets and tasks.
 
 ```
 .
-├── src/
-│   └── nn_lib/
-│       ├── __init__.py      # public API (import everything from here)
-│       ├── utils.py         # init() - reproducibility helper
-│       ├── layers.py        # Layer_Dense, Layer_Dropout, Layer_Input
-│       ├── activations.py   # ReLU, Softmax, Sigmoid, Linear
-│       ├── optimizers.py    # SGD, Adagrad, RMSprop, Adam
-│       ├── losses.py        # Categorical/Binary Cross-Entropy, MSE, MAE
-│       ├── accuracy.py      # Accuracy_Categorical, Accuracy_Regression
-│       └── model.py         # Model - the orchestrator class
+├── nn_lib/
+│   ├── __init__.py      # public API (import everything from here)
+│   ├── utils.py         # init() - reproducibility helper
+│   ├── layers.py        # Layer_Dense, Layer_Dropout, Layer_Input
+│   ├── activations.py   # ReLU, Softmax, Sigmoid, Linear
+│   ├── optimizers.py    # SGD, Adagrad, RMSprop, Adam
+│   ├── losses.py        # Categorical/Binary Cross-Entropy, MSE, MAE
+│   ├── accuracy.py      # Accuracy_Categorical, Accuracy_Regression
+│   └── model.py         # Model - the orchestrator class
 ├── test_iris_classification.py     # multi-class classification example
 ├── test_moons_classification.py    # binary classification example
 ├── test_regression_sine.py         # regression example
@@ -34,24 +33,18 @@ runnable examples on different datasets and tasks.
 └── README.md
 ```
 
-`src/nn_lib` is the library itself; everything else at the project root
-is example/test code showing how to use it. To use the library from your
-own script, add `src` to your Python path and import from `nn_lib`:
+`nn_lib` is the library itself; everything else at the project root
+is example/test code showing how to use it. Since `nn_lib` lives at the
+project root, you can import it directly as long as your working
+directory (or `PYTHONPATH`) includes the project root:
 
 ```python
-import sys
-sys.path.insert(0, "src")
-
 from nn_lib import (
     init, Layer_Dense, Activation_ReLU, Activation_Softmax,
     Loss_CategoricalCrossentropy, Optimizer_Adam,
     Accuracy_Categorical, Model,
 )
 ```
-
-(Alternatively, install the project in editable mode with a
-`pyproject.toml`/`setup.py` pointing at `src/`, if you want to `import
-nn_lib` from anywhere without manipulating `sys.path`.)
 
 ## The pipeline, stage by stage
 
@@ -807,19 +800,6 @@ python test_iris_classification.py
 Each script prints a periodic training summary (accuracy, total loss,
 data loss, regularization loss, current learning rate) and a final
 validation summary.
-
-## Known limitations
-
-- No mini-batching: `train()` runs the forward/backward pass over the
-  entire dataset on every epoch (fine for small/educational datasets, does
-  not scale to large ones).
-- No model saving/loading (parameter serialization).
-- No convolutional, recurrent, or attention layers: the library only
-  covers fully-connected feed-forward networks.
-- The optimized Softmax+CrossEntropy combination is only enabled when the
-  final activation is exactly `Activation_Softmax` and the loss is
-  exactly `Loss_CategoricalCrossentropy`; other combinations use the
-  "generic" (slower, but always correct) backward-pass path.
 
 ## Dependencies
 
