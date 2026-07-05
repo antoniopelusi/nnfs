@@ -15,14 +15,9 @@ Run from the project root with:
     python test_regression_sine.py
 """
 
-import os
-import sys
-
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
 from nn_lib import (
     Accuracy_Regression,
