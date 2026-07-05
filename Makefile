@@ -1,4 +1,4 @@
-.SILENT: all clean setup run
+.SILENT: all clean setup run_blobs_classification run_iris_classification run_moons_classification run_regression_sine
 
 VENV := .venv
 PYTHON := $(VENV)/bin/python
@@ -28,7 +28,22 @@ setup: clean
 # ----------------------------
 # Run
 # ----------------------------
-run:
+run_blobs_classification:
 	echo "=========| run started... |========="
-	$(PYTHON) nn.py;
+	$(PYTHON) test_blobs_classification.py;
+	echo "=========| run completed |========="
+
+run_iris_classification:
+	echo "=========| run started... |========="
+	$(PYTHON) test_iris_classification.py;
+	echo "=========| run completed |========="
+
+run_moons_classification:
+	echo "=========| run started... |========="
+	$(PYTHON) test_moons_classification.py;
+	echo "=========| run completed |========="
+
+run_regression_sine:
+	echo "=========| run started... |========="
+	$(PYTHON) test_regression_sine.py;
 	echo "=========| run completed |========="

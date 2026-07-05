@@ -1,2 +1,2 @@
-nnfs
-numpy
+numpy==2.5.1
+scikit-learn==1.9.0
